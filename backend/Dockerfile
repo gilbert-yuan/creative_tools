@@ -1,5 +1,5 @@
 # ---------- Builder Stage ----------
-FROM rust:1.82-alpine AS builder
+FROM docker.1ms.run:rust/1.82-alpine AS builder
 
 # 设置工作目录
 WORKDIR /app
