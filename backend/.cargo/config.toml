@@ -1,2 +1,5 @@
-[unstable]
-edition2024 = true
+[source.crates-io]
+replace-with = 'vendored-sources'
+
+[source.vendored-sources]
+directory = 'vendor'
