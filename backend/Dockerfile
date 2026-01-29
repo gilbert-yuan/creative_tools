@@ -7,7 +7,7 @@ WORKDIR /app
 RUN apk add --no-cache musl-dev postgresql-dev
 
 # 复制依赖文件
-COPY Cargo.toml Cargo.lock ./
+COPY Cargo.toml ./
 
 # 创建一个空的 main.rs 文件，以便 cargo 可以下载依赖
 RUN mkdir -p src && echo 'fn main() {}' > src/main.rs
