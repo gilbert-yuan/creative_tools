@@ -18,12 +18,12 @@ RUN apk add --no-cache \
     curl
 
 # 复制 Cargo 文件
-COPY Cargo.toml Cargo.lock ./
+COPY Cargo.toml ./
 
 # 创建 .cargo 配置文件启用 edition2024
 RUN mkdir -p /app/.cargo && echo "[unstable]\nedition2024 = true" > /app/.cargo/config.toml
 
-# 先缓存依赖
+# 生成 Cargo.lock 文件并缓存依赖
 RUN cargo fetch
 
 # 复制源码
