@@ -2,6 +2,12 @@
 
 echo "停止前后端服务..."
 
+# 确保安装了必要的工具
+if ! command -v lsof &> /dev/null; then
+    echo "安装 lsof 工具..."
+    sudo apt update && sudo apt install -y lsof
+fi
+
 # 停止后端（端口3001）
 echo "停止后端服务（端口3001）..."
 lsof -ti:3001 | xargs kill -9 2>/dev/null || echo "后端未运行"
@@ -15,26 +21,27 @@ sleep 1
 echo ""
 echo "检查数据库服务..."
 
-# 设置 PostgreSQL 路径
-PG_BIN="/usr/local/opt/postgresql@15/bin"
+# 设置 PostgreSQL 路径（Ubuntu 默认路径）
+PG_BIN="/usr/lib/postgresql/14/bin"
 export PATH="$PG_BIN:$PATH"
 
 # 检查 PostgreSQL 是否运行
-if ! $PG_BIN/pg_isready > /dev/null 2>&1; then
-    echo "数据库未运行，正在启动 PostgreSQL@15..."
+if ! pg_isready > /dev/null 2>&1; then
+    echo "数据库未运行，正在启动 PostgreSQL..."
     
-    # 检查服务是否已经在 brew services 中启动
-    if brew services list | grep "postgresql@15" | grep -q "started"; then
+    # 使用 systemctl 启动 PostgreSQL 服务
+    if sudo systemctl is-active --quiet postgresql; then
         echo "服务已标记为启动，正在重启..."
-        brew services restart postgresql@15
+        sudo systemctl restart postgresql
     else
-        brew services start postgresql@15
+        echo "正在启动 PostgreSQL 服务..."
+        sudo systemctl start postgresql
     fi
     
     # 等待数据库启动
     echo "等待数据库启动..."
     for i in {1..15}; do
-        if $PG_BIN/pg_isready > /dev/null 2>&1; then
+        if pg_isready > /dev/null 2>&1; then
             echo "✅ 数据库已启动"
             break
         fi
@@ -43,9 +50,9 @@ if ! $PG_BIN/pg_isready > /dev/null 2>&1; then
     done
     echo ""
     
-    if ! $PG_BIN/pg_isready > /dev/null 2>&1; then
+    if ! pg_isready > /dev/null 2>&1; then
         echo "❌ 数据库启动失败"
-        echo "尝试查看日志: tail -20 /usr/local/var/log/postgresql@15.log"
+        echo "尝试查看日志: sudo journalctl -u postgresql"
         exit 1
     fi
 else
