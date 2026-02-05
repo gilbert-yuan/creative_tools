@@ -252,7 +252,7 @@ export interface JobItem {
 export const videoService = {
   async virtualCut(file: File, onProgress?: (progress: number) => void): Promise<VirtualCutResponse> {
     const formData = new FormData()
-    formData.append('video', file)
+    formData.append('file', file)
 
     console.log('[API] 开始上传:', file.name, `${(file.size / 1024 / 1024).toFixed(2)} MB`)
 
@@ -264,7 +264,7 @@ export const videoService = {
     }, 120000) // 120秒超时
 
     try {
-      const response = await fetch('http://localhost:3001/api/video/virtual-cut', {
+      const response = await fetch('http://localhost:8001/api/virtual-cut', {
         method: 'POST',
         body: formData,
         signal: controller.signal,
@@ -295,7 +295,7 @@ export const videoService = {
   async getResult(jobId: string): Promise<VirtualCutResponse> {
     console.log('[API] 获取分析结果:', jobId)
 
-    const response = await fetch(`http://localhost:3001/api/result/${jobId}`)
+    const response = await fetch(`http://localhost:8001/api/jobs/${jobId}/result`)
 
     if (!response.ok) {
       const errorText = await response.text()
@@ -311,7 +311,7 @@ export const videoService = {
   async getJobs(limit: number = 20, offset: number = 0): Promise<JobItem[]> {
     console.log('[API] 获取历史记录:', { limit, offset })
 
-    const response = await fetch(`http://localhost:3001/api/jobs?limit=${limit}&offset=${offset}`)
+    const response = await fetch(`http://localhost:8001/api/jobs?limit=${limit}&offset=${offset}`)
 
     if (!response.ok) {
       const errorText = await response.text()
@@ -327,7 +327,7 @@ export const videoService = {
   async reanalyzeJob(jobId: string): Promise<{ message: string; job_id: string }> {
     console.log('[API] 重新分析任务:', jobId)
 
-    const response = await fetch(`http://localhost:3001/api/jobs/${jobId}/reanalyze`, {
+    const response = await fetch(`http://localhost:8001/api/jobs/${jobId}/reprocess`, {
       method: 'POST'
     })
 
@@ -345,7 +345,7 @@ export const videoService = {
   async youtubeVirtualCut(url: string): Promise<VirtualCutResponse> {
     console.log('[API] YouTube 视频下载:', url)
 
-    const response = await fetch('http://localhost:3001/api/video/youtube-cut', {
+    const response = await fetch('http://localhost:8001/api/youtube-virtual-cut', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -367,8 +367,8 @@ export const videoService = {
   async updateScenes(jobId: string, scenes: Scene[]): Promise<{ message: string; updated_count: number }> {
     console.log('[API] 更新场景:', jobId, scenes.length, '个场景')
 
-    const response = await fetch(`http://localhost:3001/api/jobs/${jobId}/scenes`, {
-      method: 'PUT',
+    const response = await fetch(`http://localhost:8001/api/jobs/${jobId}/update-scenes`, {
+      method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
@@ -389,7 +389,7 @@ export const videoService = {
   async physicalSplit(jobId: string): Promise<{ message: string; split_count: number; output_directory: string }> {
     console.log('[API] 物理切分视频:', jobId)
 
-    const response = await fetch(`http://localhost:3001/api/jobs/${jobId}/split`, {
+    const response = await fetch(`http://localhost:8001/api/jobs/${jobId}/physical-split`, {
       method: 'POST',
     })
 
@@ -407,7 +407,7 @@ export const videoService = {
   async deleteJob(jobId: string): Promise<{ message: string; job_id: string }> {
     console.log('[API] 删除任务:', jobId)
 
-    const response = await fetch(`http://localhost:3001/api/jobs/${jobId}`, {
+    const response = await fetch(`http://localhost:8001/api/jobs/${jobId}`, {
       method: 'DELETE',
     })
 
@@ -424,23 +424,7 @@ export const videoService = {
 
   async openInFinder(filePath: string): Promise<{ success: boolean; message: string }> {
     console.log('[API] 在Finder中打开:', filePath)
-
-    const response = await fetch('http://localhost:3001/api/files/reveal', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ file_path: filePath }),
-    })
-
-    if (!response.ok) {
-      const error = await response.json()
-      console.error('[API] 打开Finder失败:', error)
-      throw new Error(error.error || '打开Finder失败')
-    }
-
-    const result = await response.json()
-    console.log('[API] Finder已打开')
-    return result
+    // 新的Python后端暂不支持此功能
+    return { success: false, message: '此功能在新后端中暂不可用' }
   }
 }

@@ -1,56 +1,53 @@
 # ---------- Builder Stage ----------
-FROM docker.1ms.run/rust:1.82-alpine AS builder
+FROM python:3.11-alpine AS builder
 
 # 设置工作目录
 WORKDIR /app
 
 # 安装系统依赖
 RUN apk add --no-cache \
-    musl-dev \
-    libpq-dev \
-    pkgconf \
-    openssl-dev \
-    clang \
-    llvm \
-    lld \
-    git \
-    bash \
-    curl
+    build-base \
+    postgresql-dev \
+    ffmpeg \
+    yt-dlp \
+    curl \
+    && rm -rf /var/cache/apk/*
 
-# 复制 Cargo 文件
-COPY Cargo.toml ./
+# 复制依赖文件
+COPY requirements.txt .
 
-# 创建 .cargo 配置文件启用 edition2024
-RUN mkdir -p /app/.cargo && echo "[unstable]\nedition2024 = true" > /app/.cargo/config.toml
-
-# 生成 Cargo.lock 文件并缓存依赖
-RUN cargo fetch
-
-# 复制源码
-COPY src ./src
-
-# 构建 release 二进制
-RUN cargo build --release
+# 安装 Python 依赖
+RUN pip install --no-cache-dir -r requirements.txt
 
 # ---------- Runtime Stage ----------
-FROM debian:bullseye-slim
+FROM python:3.11-alpine
 
+# 设置工作目录
 WORKDIR /app
 
 # 安装运行时依赖
-RUN apt-get update && apt-get install -y \
-    libpq5 \
+RUN apk add --no-cache \
+    postgresql-libs \
+    ffmpeg \
+    yt-dlp \
     ca-certificates \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/cache/apk/*
 
-# 复制编译好的二进制
-COPY --from=builder /app/target/release/video_analysis_api ./
+# 复制 Python 依赖
+COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
+COPY --from=builder /usr/local/bin /usr/local/bin
+
+# 复制应用代码
+COPY src/ .
 
 # 复制环境变量文件
 COPY .env.example .env
 
-# 设置生产环境变量
-ENV RUST_ENV=production
+# 创建必要的目录
+RUN mkdir -p data/analysis data/projects logs
+
+# 设置环境变量
+ENV PYTHONUNBUFFERED=1
 ENV DATABASE_URL=postgres://postgres:postgres@db:5432/video_analysis
 ENV GEMINI_BASE_URL=your_api_base_url
 ENV GEMINI_API_KEY=your_gemini_api_key_here
@@ -70,8 +67,15 @@ ENV R2_SECRET_ACCESS_KEY=your_secret_key
 ENV R2_BUCKET_NAME=your_bucket_name
 ENV R2_PUBLIC_URL=https://your-cdn-url.com
 
+# 阿里云模型配置
+ENV ALIYUN_ACCESS_KEY=your_aliyun_access_key
+ENV ALIYUN_ACCESS_KEY_SECRET=your_aliyun_access_key_secret
+ENV ALIYUN_REGION_ID=cn-beijing
+ENV ALIYUN_MODEL_NAME=qwen-max
+ENV ALIYUN_API_VERSION=2024-07-01
+
 # 暴露端口
 EXPOSE 8000
 
 # 默认启动命令
-CMD ["./video_analysis_api"]
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
